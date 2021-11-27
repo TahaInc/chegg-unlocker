@@ -574,7 +574,7 @@ puppeteer.use(
     rawdata = fs.readFileSync("access.json");
     users = JSON.parse(rawdata);
 
-    if (users[accessId] === undefined) {
+    if (users[accessId] === undefined || accessId == "__proto__") {
       return false;
     } else {
       return true;
