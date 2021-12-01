@@ -108,6 +108,5 @@ dist
 access.json
 cookies.json
 database.json
-login.txt
 apikeys.json
 .DS_Store

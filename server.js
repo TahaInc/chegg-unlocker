@@ -4,12 +4,12 @@ const app = express();
 const puppeteer = require("puppeteer-extra");
 const pluginStealth = require("puppeteer-extra-plugin-stealth");
 const AdblockerPlugin = require("puppeteer-extra-plugin-adblocker");
-const reCaptcha = require("./captchaSolver.js");
+const { reCaptcha, rdn } = require("./captchaSolver.js");
 const { Cluster } = require("puppeteer-cluster");
 const RecaptchaPlugin = require("puppeteer-extra-plugin-recaptcha");
 const ghostCursor = require("ghost-cursor");
 const adblocker = AdblockerPlugin({
-  blockTrackers: true,
+  blockTrackers: false,
 });
 const expressSession = require("express-session")({
   secret: "chegg-secret-key", // Cookie secret key
@@ -27,7 +27,6 @@ app.use(expressSession);
 let rawdata = fs.readFileSync("access.json");
 let users = JSON.parse(rawdata);
 let apikeys = JSON.parse(fs.readFileSync("apikeys.json"));
-let firstTime = true;
 
 puppeteer.use(pluginStealth()); // For stealth mode against captcha
 puppeteer.use(adblocker); // Adblock
@@ -43,7 +42,7 @@ puppeteer.use(
 
 (async () => {
   const cluster = await Cluster.launch({
-    concurrency: Cluster.CONCURRENCY_PAGE,
+    concurrency: Cluster.CONCURRENCY_CONTEXT,
     maxConcurrency: 1,
     timeout: 100000,
     monitor: true,
@@ -51,13 +50,13 @@ puppeteer.use(
     puppeteerOptions: {
       headless: true,
       slowMo: 0,
-      userDataDir: "./cache/",
       ignoreHTTPSErrors: true,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-web-security",
         "--disable-dev-shm-usage",
+        "--incognito",
         "--disable-features=site-per-process",
         "--proxy-server=" + apikeys.proxyip, // Dedicated proxy server to bypass most if not all captcha
       ],
@@ -89,14 +88,10 @@ puppeteer.use(
       try {
         setStatus(req, "Started unlocking...");
 
-        if (firstTime) {
-          console.log("Logging in proxy");
-          await page.authenticate({
-            username: apikeys.proxyusername,
-            password: apikeys.proxypassword,
-          });
-          firstTime = false;
-        }
+        await page.authenticate({
+          username: apikeys.proxyusername,
+          password: apikeys.proxypassword,
+        });
 
         await page.setViewport({ width: 1280, height: 800 });
         await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4427.0 Safari/537.36");
@@ -104,7 +99,8 @@ puppeteer.use(
           Origin: "https://www.chegg.com",
         });
 
-        const cursor = ghostCursor.createCursor(page, await ghostCursor.getRandomPagePoint(page));
+        const cursor = ghostCursor.createCursor(page);
+        await ghostCursor.installMouseHelper(page);
 
         const cookiesString = fs.readFileSync("cookies.json");
         const cookies = JSON.parse(cookiesString);
@@ -137,47 +133,91 @@ puppeteer.use(
         }
 
         if ((await page.$("#px-captcha")) != null) {
+          await cursor.moveTo(await ghostCursor.getRandomPagePoint(page));
           // Detect captcha screen and solve captch (if no proxy server provided)
           console.log("Captcha detected");
           setStatus(req, "Attempting to solve captcha...");
 
-          try {
-            await reCaptcha(page, cursor, apikeys.witai); // Attempting to solve captcha using text to speech recognition
-            await page.waitForNavigation({
-              waitUntil: "load",
-              timeout: 10000,
-            });
-          } catch (e) {
-            console.log(e);
-            console.log("Backup captcha solving");
-            setStatus(req, "Still solving captcha, this is taking longer than expected...");
-
-            // Attempting to solve captcha using 2captcha
+          if (page.frames().find((frame) => frame.url().includes("api2/anchor")) === undefined) {
+            // If it's a "hold to confirm" captcha
             try {
-              await page.solveRecaptchas();
-              setStatus(req, "Captcha successfully solved!");
-              if (usingURL) {
-                try {
-                  await page.waitForNavigation({
-                    waitUntil: "load",
-                    timeout: 8000,
-                  });
-                } catch (e) {}
-              } else {
-                try {
-                  await page.waitForSelector("[data-test*='study-question']", { timeout: 7000 });
-                } catch (e) {}
-              }
+              await page.waitForNavigation({
+                waitUntil: "networkidle2",
+                timeout: 1000,
+              });
             } catch (e) {}
+
+            const captchabox = await (await page.$("#px-captcha")).boundingBox();
+
+            await cursor.moveTo(await ghostCursor.getRandomPagePoint(page));
+            await cursor.moveTo(await ghostCursor.getRandomPagePoint(page));
+            await cursor.moveTo(await ghostCursor.getRandomPagePoint(page));
+            await cursor.moveTo({ x: captchabox.x + rdn(15, 25), y: captchabox.y + rdn(15, 25) });
+            await cursor.moveTo(await ghostCursor.getRandomPagePoint(page));
+            await cursor.moveTo({ x: captchabox.x + rdn(15, 25), y: captchabox.y + rdn(15, 25) });
+            await page.waitForTimeout(rdn(100, 200));
+            await page.mouse.down();
+
+            await page.waitForSelector("iframe");
+            const elementHandle = await page.$('iframe[style*="block"]');
+            const iframe = await elementHandle.contentFrame();
+            await iframe.waitForSelector(".draw");
+
+            await page.mouse.up();
+            await cursor.moveTo(await ghostCursor.getRandomPagePoint(page));
+            await cursor.moveTo(await ghostCursor.getRandomPagePoint(page));
+            if (usingURL) {
+              try {
+                await page.waitForNavigation({
+                  waitUntil: "load",
+                  timeout: 8000,
+                });
+              } catch (e) {}
+            } else {
+              try {
+                await page.waitForSelector("[data-test*='study-question']", { timeout: 7000 });
+              } catch (e) {}
+            }
+          } else {
+            // If it's a regular captcha
+            try {
+              await reCaptcha(page, cursor, apikeys.witai); // Attempting to solve captcha using text to speech recognition
+              await page.waitForNavigation({
+                waitUntil: "load",
+                timeout: 10000,
+              });
+            } catch (e) {
+              console.log(e);
+              console.log("Backup captcha solving");
+              setStatus(req, "Still solving captcha, this is taking longer than expected...");
+
+              // Attempting to solve captcha using 2captcha
+              try {
+                await page.solveRecaptchas();
+                setStatus(req, "Captcha successfully solved!");
+                if (usingURL) {
+                  try {
+                    await page.waitForNavigation({
+                      waitUntil: "load",
+                      timeout: 8000,
+                    });
+                  } catch (e) {}
+                } else {
+                  try {
+                    await page.waitForSelector("[data-test*='study-question']", { timeout: 7000 });
+                  } catch (e) {}
+                }
+              } catch (e) {}
+            }
           }
           console.log("Captcha done");
         }
 
-        if ((await page.$("[data-area*='result1']")) != null) {
+        if ((await page.$("[data-test='section-1-serp-result-1-study-link']")) != null) {
           // If arrived in a search screen
           setStatus(req, "Found a matching solution...");
 
-          await cursor.click("[data-area*='result1']");
+          await cursor.click("[data-test='section-1-serp-result-1-study-link']");
 
           try {
             await page.waitForNavigation({
@@ -361,13 +401,13 @@ puppeteer.use(
       // Check if cookies are set
       if (!refreshAccessCode(req.body.password)) {
         // Try to login into a session
-        console.log("Failed login with password: " + req.body.password);
+        console.log("Failed login with password: " + req.body.password + " (" + new Date() + ")");
         res.render("login.ejs", {
           errorMessage: "Invalid access code, try again.",
         });
       } else {
         setStatus(req, "");
-        console.log("Login with password: " + req.body.password);
+        console.log("Login with password: " + req.body.password + " (" + new Date() + ")");
         req.session.accessid = req.body.password; // Set the cookies
         req.session.save();
         res.redirect("/");
@@ -392,7 +432,7 @@ puppeteer.use(
       if (users[req.session.accessid] === undefined) {
         // Check if access code is still valid
         req.session.accessid = undefined;
-        console.log("Failed login with password: " + req.body.password);
+        console.log("Failed login with password: " + req.body.password + " (" + new Date() + ")");
         res.redirect("/login");
       } else {
         let requestsAmount = refreshRequest(req.session.accessid);
@@ -534,7 +574,7 @@ puppeteer.use(
     rawdata = fs.readFileSync("access.json");
     users = JSON.parse(rawdata);
 
-    if (users[accessId] === undefined) {
+    if (users[accessId] === undefined || accessId == "__proto__") {
       return false;
     } else {
       return true;
@@ -609,19 +649,19 @@ puppeteer.use(
   }
 
   const fillerWords = JSON.parse(fs.readFileSync("filler.json"));
-  let dbSize = Object.keys(JSON.parse(fs.readFileSync("database.json"))).length;
 
   function addToDatabase(screenshot, currenturl, searchkeywords) {
     try {
       database = fs.readFileSync("database.json");
       let data = JSON.parse(database);
+      let dbSize = Object.keys(data).length;
 
       if (searchDatabase(currenturl) == null && searchDatabase(searchkeywords) == null) {
         // If screenshot not in database, add it to database
         data[searchkeywords] = dbSize + ".jpeg";
         data[currenturl] = dbSize + ".jpeg";
         fs.writeFileSync("database.json", JSON.stringify(data));
-        fs.writeFileSync("database/" + dbSize++ + ".jpeg", screenshot, "base64", function (e) {
+        fs.writeFileSync("database/" + dbSize + ".jpeg", screenshot, "base64", function (e) {
           console.log(e);
         });
       } else {
@@ -647,8 +687,9 @@ puppeteer.use(
       try {
         if (keywords.match(/(^$|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/)) {
           searchKeywords = keywords
-            .split("/")[5]
-            .split("q")[0]
+            .split("/")
+            .pop()
+            .replace(/q\d+/gm, "")
             .toLowerCase()
             .replace(/^\d+|[/’/ $-/:-?{-~!"^_`\[\]]/g, "");
         } else {
@@ -658,14 +699,17 @@ puppeteer.use(
             .replace(new RegExp(fillerWords.join("\\b|\\b"), "g"), "")
             .replace(/\ /g, "");
         }
-      } catch (e) {}
+      } catch (e) {
+        console.log(e);
+      }
 
       for (i in Object.keys(data)) {
         try {
           if (Object.keys(data)[i].match(/(^$|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/)) {
             dbKeywords = Object.keys(data)
-              [i].split("/")[5]
-              .split("q")[0]
+              [i].split("/")
+              .pop()
+              .replace(/q\d+/gm, "")
               .toLowerCase()
               .replace(/^\d+|[/’/ $-/:-?{-~!"^_`\[\]]/g, "");
           } else {
@@ -675,7 +719,9 @@ puppeteer.use(
               .replace(new RegExp(fillerWords.join("\\b|\\b"), "g"), "")
               .replace(/\ /g, "");
           }
-        } catch (e) {}
+        } catch (e) {
+          console.log(e);
+        }
 
         if (dbKeywords.includes(searchKeywords) || searchKeywords.includes(dbKeywords)) {
           return Object.values(data)[i];
