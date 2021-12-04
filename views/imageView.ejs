@@ -2,7 +2,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title id="title">Chegg unlocker</title>
+  <title id="title">Textbook scrapper</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/icon" href="assets/icon.png" id="Icon" />
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" />
@@ -41,7 +41,7 @@
           type: "post",
           url: "/unlock",
           cache: false,
-          data: { chegg_url: "<%= url %>", skipDatabase: false },
+          data: { url_input: "<%= url %>", skipDatabase: false },
           dataType: "html",
           success: function (data) {
             clearInterval(statusFetch);

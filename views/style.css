@@ -305,7 +305,7 @@ input:focus {
   left: 50%;
 }
 
-#chegg_url {
+#url_input {
   padding: 1rem 1.5rem;
   border-radius: 0.2rem;
   width: 93%;

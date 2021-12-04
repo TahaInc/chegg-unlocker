@@ -2,7 +2,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title id="title">Chegg unlocker</title>
+  <title id="title">Textbook scrapper</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/icon" href="assets/icon.png" id="Icon" />
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" />
@@ -12,18 +12,21 @@
 <body>
   <main>
     <img src="assets/background.jpg" id="background_image" />
-    <h1 class="title">Chegg unlocker</h1>
+    <h1 class="title">Textbook scrapper</h1>
     <h1 class="stats">
-      <u>Requests:</u> <%= requests %><br /><u>Expiration:</u>
-      <%= expiration %>
+      <u>Requests:</u>
+      <%= requests %><br /><u>Expiration:</u>
+        <%= expiration %>
     </h1>
 
     <a href="/logout" class="logout">Logout</a>
 
     <div id="url_menu">
       <form id="link_form" action="/unlock" method="post" style="margin-top: 10%">
-        <input id="chegg_url" type="text" placeholder="Paste url or enter question keywords" name="chegg_url" />
-        <h3 id="error_message"><%= errorMessage %></h3>
+        <input id="url_input" type="text" placeholder="Paste url or enter question keywords" name="url_input" />
+        <h3 id="error_message">
+          <%= errorMessage %>
+        </h3>
         <div class="button_holder">
           <button onclick="init()" class="unlock" id="unlock" value="send">Unlock</button>
         </div>

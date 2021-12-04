@@ -12,7 +12,7 @@ const adblocker = AdblockerPlugin({
   blockTrackers: false,
 });
 const expressSession = require("express-session")({
-  secret: "chegg-secret-key", // Cookie secret key
+  secret: "textbook-scrapper-secret-key", // Cookie secret key
   resave: false,
   saveUninitialized: false,
 });
@@ -27,7 +27,7 @@ app.use(expressSession);
 let rawdata = fs.readFileSync("access.json");
 let users = JSON.parse(rawdata);
 let apikeys = JSON.parse(fs.readFileSync("apikeys.json"));
-
+let baseURL = apikeys["baseURL"];
 puppeteer.use(pluginStealth()); // For stealth mode against captcha
 puppeteer.use(adblocker); // Adblock
 puppeteer.use(
@@ -96,7 +96,7 @@ puppeteer.use(
         await page.setViewport({ width: 1280, height: 800 });
         await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4427.0 Safari/537.36");
         await page.setExtraHTTPHeaders({
-          Origin: "https://www.chegg.com",
+          Origin: baseURL,
         });
 
         const cursor = ghostCursor.createCursor(page);
@@ -117,7 +117,7 @@ puppeteer.use(
         } else if (!usingURL) {
           // If using the keyword field
           try {
-            await page.goto("https://www.chegg.com/search/" + url);
+            await page.goto(baseURL + "/search/" + url);
             await page.waitForSelector("[data-test*='study-question']", { timeout: 7000 });
           } catch (e) {}
         } else {
@@ -456,11 +456,11 @@ puppeteer.use(
             if (isUserOffline(req.session.accessid)) {
               addUserOnline(req.session.accessid);
               setStatus(req, "Server overload, waiting in the queue...");
-              if (req.body.chegg_url.match(/(^$|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/)) {
+              if (req.body.url_input.match(/(^$|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/)) {
                 // If using a URL
-                const filename = searchDatabase(req.body.chegg_url);
+                const filename = searchDatabase(req.body.url_input);
                 if (filename == null || skipDatabase) {
-                  await cluster.execute({ url: req.body.chegg_url, req: req, res: res, usingURL: true });
+                  await cluster.execute({ url: req.body.url_input, req: req, res: res, usingURL: true });
                 } else {
                   try {
                     res.render("imageView.ejs", {
@@ -468,18 +468,18 @@ puppeteer.use(
                       requests: refreshRequestPrint(req.session.accessid),
                       expiration: refreshExpirationPrint(req.session.accessid),
                       refresh: true,
-                      url: req.body.chegg_url,
+                      url: req.body.url_input,
                     });
                   } catch (e) {
-                    await cluster.execute({ url: req.body.chegg_url, req: req, res: res, usingURL: true });
+                    await cluster.execute({ url: req.body.url_input, req: req, res: res, usingURL: true });
                   }
                 }
                 removeUserOnline(req.session.accessid);
-              } else if (req.body.chegg_url.match(/\w+/g)) {
+              } else if (req.body.url_input.match(/\w+/g)) {
                 // If using keywords
-                const filename = searchDatabase(req.body.chegg_url.replace(/\?/g, ""));
+                const filename = searchDatabase(req.body.url_input.replace(/\?/g, ""));
                 if (filename == null || skipDatabase) {
-                  await cluster.execute({ url: req.body.chegg_url.replace(/\?/g, ""), req: req, res: res, usingURL: false });
+                  await cluster.execute({ url: req.body.url_input.replace(/\?/g, ""), req: req, res: res, usingURL: false });
                 } else {
                   try {
                     res.render("imageView.ejs", {
@@ -487,10 +487,10 @@ puppeteer.use(
                       requests: refreshRequestPrint(req.session.accessid),
                       expiration: refreshExpirationPrint(req.session.accessid),
                       refresh: true,
-                      url: req.body.chegg_url,
+                      url: req.body.url_input,
                     });
                   } catch (e) {
-                    await cluster.execute({ url: req.body.chegg_url.replace(/\?/g, ""), req: req, res: res, usingURL: false });
+                    await cluster.execute({ url: req.body.url_input.replace(/\?/g, ""), req: req, res: res, usingURL: false });
                   }
                 }
                 removeUserOnline(req.session.accessid);
