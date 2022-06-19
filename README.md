@@ -1,9 +1,16 @@
 # Textbook unlocker
 
-A web scraper for textbook problems & solutions with a web UI and a node.js backend. It also features an automatic AI captcha solver with a high success rate.
+### Main features:
 
-![Image 1](https://github.com/TahaInc/textbook-scrapper/blob/main/Screenshots/Screenshot_1.png?raw=true)
+- Features an AI captcha solver
+- Finds almost any textbook problem solution within a few seconds
+- Allows host to provide access IDs with limited requests amount or an expiration date
+- Builds a local solution database, so solutions don't need to be scrapped twice and provide users with instantaneous access.
 
-![Image 1](https://github.com/TahaInc/textbook-scrapper/blob/main/Screenshots/Screenshot_2.png?raw=true)
+<br />
 
-![Image 1](https://github.com/TahaInc/textbook-scrapper/blob/main/Screenshots/Screenshot_3.png?raw=true)
+**Your access code allows you access to the scrapper for a number of requests or for an amount of time** ![login](https://github.com/TahaInc/textbook-scrapper/blob/main/Screenshots/Screenshot_1.png?raw=true)
+
+**Enter a question url or keywords from a question to find an answer** ![url](https://github.com/TahaInc/textbook-scrapper/blob/main/Screenshots/Screenshot_2.png?raw=true)
+
+**Get your step-by-step solution within a few seconds** ![solution](https://github.com/TahaInc/textbook-scrapper/blob/main/Screenshots/Screenshot_3.png?raw=true)
