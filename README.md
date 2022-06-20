@@ -9,8 +9,8 @@
 
 <br />
 
-**Your access code allows you access to the scrapper for a number of requests or for an amount of time** ![login](https://github.com/TahaInc/textbook-scrapper/blob/main/Screenshots/Screenshot_1.png?raw=true)
+**Your access code allows you access to the scrapper for a number of requests or for an amount of time** ![login](https://github.com/TahaInc/textbook-scrapper/blob/main/images/screenshot_1.png?raw=true)
 
-**Enter a question url or keywords from a question to find an answer** ![url](https://github.com/TahaInc/textbook-scrapper/blob/main/Screenshots/Screenshot_2.png?raw=true)
+**Enter a question url or keywords from a question to find an answer** ![url](https://github.com/TahaInc/textbook-scrapper/blob/main/images/screenshot_2.png?raw=true)
 
-**Get your step-by-step solution within a few seconds** ![solution](https://github.com/TahaInc/textbook-scrapper/blob/main/Screenshots/Screenshot_3.png?raw=true)
+**Get your step-by-step solution within a few seconds** ![solution](https://github.com/TahaInc/textbook-scrapper/blob/main/images/screenshot_3.png?raw=true)
