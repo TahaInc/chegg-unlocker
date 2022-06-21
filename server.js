@@ -2,15 +2,10 @@ const fs = require("fs");
 const express = require("express");
 const app = express();
 const puppeteer = require("puppeteer-extra");
-const pluginStealth = require("puppeteer-extra-plugin-stealth");
-const AdblockerPlugin = require("puppeteer-extra-plugin-adblocker");
 const { reCaptcha, rdn } = require("./captchaSolver.js");
 const { Cluster } = require("puppeteer-cluster");
 const RecaptchaPlugin = require("puppeteer-extra-plugin-recaptcha");
 const ghostCursor = require("ghost-cursor");
-const adblocker = AdblockerPlugin({
-  blockTrackers: false,
-});
 const expressSession = require("express-session")({
   secret: "textbook-scrapper-secret-key", // Cookie secret key
   resave: false,
@@ -28,8 +23,6 @@ let rawdata = fs.readFileSync("access.json");
 let users = JSON.parse(rawdata);
 let apikeys = JSON.parse(fs.readFileSync("apikeys.json"));
 let baseURL = apikeys["baseURL"];
-puppeteer.use(pluginStealth()); // For stealth mode against captcha
-puppeteer.use(adblocker); // Adblock
 puppeteer.use(
   // Backup captcha solver
   RecaptchaPlugin({
