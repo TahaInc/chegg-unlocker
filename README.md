@@ -1,4 +1,4 @@
-# Textbook unlocker
+# Textbook Scrapper
 
 ### Main features:
 
